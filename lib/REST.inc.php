@@ -11,9 +11,10 @@ function __autoload($class) {
 			// Try to find it on our API plugins
 			$wpr_plugins = get_option("wpr_plugins");
 			foreach($wpr_plugins as $wpr_plugin_name => $wpr_plugin_folder) {
+				#error_log( 'loading '.WP_PLUGIN_DIR."/".$wpr_plugin_folder."/lib/".$class . '.php');
 				@include_once ( WP_PLUGIN_DIR."/".$wpr_plugin_folder."/lib/".$class . '.php');
 				if (class_exists ( $class, false )) {
-					$found = true;	
+					$found = true;
 				}
 			}
 		} else
@@ -223,14 +224,11 @@ abstract class WPAPIRESTActionsController {
 		$method = "";
 		$parameter = array ();
 		try {
-			if(!ctype_digit($this->getActionRequest ()) && $this->getActionRequest () != "all") {
-				if(is_callable ( array ($this->action_name, strtolower($this->getActionRequest ()) ) )) {
-					$method = strtolower($this->getActionRequest ());
-					$parameter = $_POST;
-				} else {
-					//throw new InvalidArgumentException ( 'Method was not found in class ' . $this->action_name . '.' );
-					die ( WPRESTUtils::sendResponse ( 404 ) );
-				}	
+			if(!ctype_digit($this->getActionRequest ())
+					&& $this->getActionRequest () != "all"
+					&& is_callable ( array ($this->action_name, strtolower($this->getActionRequest ()) ) )) {
+				$method = strtolower($this->getActionRequest ());
+				$parameter = $_POST;
 			} else {
 				/*print_r(preg_match("/[A-Za-z\_]+/i",$this->action_name,$matches));
 				foreach($matches as $match) {
@@ -257,11 +255,8 @@ abstract class WPAPIRESTActionsController {
 					die ( WPRESTUtils::sendResponse ( 404 ) );
 				}
 			}
-			//echo $method;
-			if ($this->action_request == "all") {
-				$parameter = "";
-				$method = wpr_pluralize($method);
-			} else {
+			#error_log($this->action_request);
+			if ($this->action_request != "all") {
 				if (ctype_digit ( $this->action_request )) {
 					$parameter = $this->action_request;
 				} else {
@@ -269,6 +264,7 @@ abstract class WPAPIRESTActionsController {
 				}
 			}
 			$class = new $this->action_name ( );
+			#error_log($this->action_name . '#' . $method);
 			// Add Get and Post variables to our class call
 			return call_user_func ( array ($class, $method ), $parameter );
 			// Exit with 404
@@ -304,26 +300,21 @@ abstract class WPAPIRESTController extends WPAPIRESTActionsController {
 		//echo $this->getAction().'<br/>'.$this->getActionRequest().'<br/>'.$this->getActionRequestType();
 		$action_controller_name = ucwords ( wpr_unpluralize ( $this->getAction () ) ) . "RESTController";
 		$action_model_name = ucwords ( wpr_unpluralize ( $this->getAction () ) );
-		// Check if this class is allowed to be accessed by the API externaly
-		if (preg_match ( WPR_ALLOWED_REGEX, $this->getAction (), $matches )) {
-			// Check if the class exists. If it does we'll try to autoload and initilize it.
-			if (class_exists ( $action_controller_name )) {				
-				$this->action_controller = new $action_controller_name ( );
-				
-			} elseif (class_exists ( $action_model_name )) {
-				// Check if the model exists (Task.ins.php). If it does we'll try to autoload and initilize it.
-				$this->action_model = new $action_model_name ( );
-				
-			} elseif (class_exists ( wpr_pluralize ( $action_model_name ) )) {
-				// Check if the model exists (Task.ins.php). If it does we'll try to autoload and initilize it.
-				$action_model_name = wpr_pluralize ( $action_model_name );
-				$this->action_model = new $action_model_name ( );
-				
-			} else {
-				// Do something cool and standard :)
-				die ( WPRESTUtils::sendResponse ( 404 ) );
-			}
+		// Check if the class exists. If it does we'll try to autoload and initilize it.
+		if (class_exists ( $action_controller_name )) {
+			$this->action_controller = new $action_controller_name ( );
+
+		} elseif (class_exists ( $action_model_name )) {
+			// Check if the model exists (Task.ins.php). If it does we'll try to autoload and initilize it.
+			$this->action_model = new $action_model_name ( );
+
+		} elseif (class_exists ( wpr_pluralize ( $action_model_name ) )) {
+			// Check if the model exists (Task.ins.php). If it does we'll try to autoload and initilize it.
+			$action_model_name = wpr_pluralize ( $action_model_name );
+			$this->action_model = new $action_model_name ( );
+
 		} else {
+			// Do something cool and standard :)
 			die ( WPRESTUtils::sendResponse ( 404 ) );
 		}
 		// Lets send the data to our action controler
