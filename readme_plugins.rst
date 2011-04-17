@@ -24,36 +24,35 @@ Plug Into WP-RESTful
 1.	Plugin should install itself on activation and uninstall itself on
 	deactivation.
 1.1	Installation includes add plugin name to active plugins list:
-
+::
 	function wpr_myplugin_install() {
 		// get a handle to the active plugins
 		$wpr_plugins = get_option("wpr_plugins");
 		if(!is_array($wpr_plugins))
 			$wpr_plugins = array();
-
+		
 		// Add our plugin as active
-		$wpr_plugins['plugin_name'] = "your-plugin-dir";
+		$wpr_plugins['plugin_name'] = "my-plugin-dir";
 		update_option("wpr_plugins",$wpr_plugins);
 	}
-	register_activation_hook(WP_PLUGIN_DIR.'your-plugin-dir/your-plugin.php', 'wpr_myplugin_install');
+	register_activation_hook(WP_PLUGIN_DIR.'my-plugin-dir/my-plugin.php', 'wpr_myplugin_install');
 
 1.2	Uninstallation includes removing plugin name from active plugins list:
-
-	function wpr_categories_uninstall() {
+::
+	function wpr_myplugin_uninstall() {
 		// get a handle to the active plugins
 		$wpr_plugins = get_option("wpr_plugins");
 		if(!is_array($wpr_plugins))
 			$wpr_plugins = array();
-
+		
 		// Remove this plugin as active
-		$wpr_active_plugins = array_diff($wpr_plugins,array("your-plugin-dir"));
+		$wpr_active_plugins = array_diff($wpr_plugins,array("my-plugin-dir"));
 		update_option("wpr_plugins",$wpr_active_plugins);
 	}
-	register_deactivation_hook(WP_PLUGIN_DIR.'your-plugin-dir/your-plugin.php', 'wpr_myplugin_uninstall');
+	register_deactivation_hook(WP_PLUGIN_DIR.'my-plugin-dir/my-plugin.php', 'wpr_myplugin_uninstall');
 
-2.	Register with WP-RESTful by calling `wpr_add_plugin` and passing it a method
-	that will describe your admin entry.
-
+2.	Register with WP-RESTful by calling ``wpr_add_plugin`` and passing it a method that will describe your admin entry:
+::
 	function wpr_myplugin_fields() {
 		return array('My Plugin' => array(
 			'thing_ID' => 'Thing ID',
@@ -66,8 +65,8 @@ Plug Into WP-RESTful
 	}
 	wpr_add_plugin('wpr_myplugin_fields');
 
-3.	Register your plugins pluralization if applicable.
-
+3.	Register your plugins pluralization if applicable:
+::
 	function wpr_myplugin_pluralization() {
 		// this is the default case and can be omitted if this follows your
 		// entity's pluralization
@@ -83,12 +82,12 @@ Extend WPAPIRESTController
 The work horse of all this will be a class that extends the REST controller base
 class. All REST controllers will extend a provided base controller and the name
 should start with the singular form of your entity's name.
-
+::
 	class PersonRESTController extends WPAPIRESTController {
 
 There are 2 cases for reaching your REST controller: by its singular form and by
 its plural form. You will have a method for each of these.
-
+::
 	protected function getPeople() { }
 	
 	protected function getPerson($person) { }
@@ -96,16 +95,16 @@ its plural form. You will have a method for each of these.
 	// this is accessed by /api/person/carl.json
 	protected function getCarl() { }
 
-If http://localhost/wp/api/person/carl.json is accessed, _getCarl()_ is called.
+If http://localhost/wp/api/person/carl.json is accessed, ``getCarl()`` is called.
 If http://localhost/wp/api/person/bob.json is accessed, getPerson('bob') is
 called.
 
 Method lookup happens in the followingorder (note: actionRequest is the ID part
 of the URL):
 
-1. If actionRequest == all, getPlural
-2. If class has function named 'get' + actionRequest, call get$actionRequest
-3. Call getSingular and pass actionRequest as parameter.
+1. If actionRequest == all, getPlural [``getPeople``]
+2. If class has function named ``'get' + actionRequest``, call ``get$actionRequest`` [``getCarl``]
+3. Call getSingular and pass actionRequest as parameter. [``getPerson('bob')``]
 
 Accessing Your Controller
 -------------------------
@@ -114,7 +113,7 @@ controller using a URL like this:
 
 	http://localhost/wp/api/people.json
 
-which will make a call to _PersonRESTController.getPeople()_.
+which will make a call to ``PersonRESTController.getPeople()``.
 
 To get a specific record you would use a URL like this:
 
@@ -143,6 +142,4 @@ The check order for REST controller classes by name is:
 8. lib/MyEntities.php
 9. <check each loaded plugin's lib dir>/MyEntities.php
 
-Links
------
 .. _microformat: http://microformats.org/wiki/rest
