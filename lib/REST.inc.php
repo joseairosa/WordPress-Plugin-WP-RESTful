@@ -221,12 +221,13 @@ abstract class WPAPIRESTActionsController {
 		}
 	}
 	protected function getResult() {
-		$method = "";
+		$class = null;
+		$method = null;
 		$parameter = array ();
 		try {
-			if(!ctype_digit($this->getActionRequest ())
-					&& $this->getActionRequest () != "all"
+			if($this->getActionRequest () != "all"
 					&& is_callable ( array ($this->action_name, strtolower($this->getActionRequest ()) ) )) {
+				$class = $this->action_name;
 				$method = strtolower($this->getActionRequest ());
 				$parameter = $_POST;
 			} else {
@@ -235,40 +236,41 @@ abstract class WPAPIRESTActionsController {
 					print_r(preg_match("/[A-Za-z\_]+/i",$this->action,$matches2));
 				}
 				print_r($matches);*/
-				if (is_callable ( array ($this->action_name, 'get' . ucwords($this->action) ) )) {
-					$method = 'get' . ucwords($this->action);
-					
-				} elseif (is_callable ( array ($this->action_name, 'get' . wpr_pluralize ( ucwords($this->action) ) ) )) {
-					$method = 'get' . wpr_pluralize ( ucwords($this->action) );
-					
-				} elseif (is_callable ( array (wpr_pluralize ( $this->action_name ), 'get' . ucwords($this->action) ) )) {
-					$method = 'get' . ucwords($this->action);
-					
-				} elseif (is_callable ( array ($this->action_name . "s", 'get' . wpr_pluralize ( ucwords($this->action) ) ) )) {
-					$method = 'get' . wpr_pluralize ( ucwords($this->action) );
-					
-				} elseif (is_callable ( array ($this->action_name, 'get' . wpr_unpluralize ( ucwords($this->action) ) ) )) {
-					$method = 'get' . wpr_unpluralize ( ucwords($this->action) );
-					
-				} else {
+
+				// use the request method to determine which function to call.
+				$_method = strtolower($_SERVER['REQUEST_METHOD']);
+				if ($_method == 'post' && !empty($_REQUEST['_method'])) {
+					$_method = $_REQUEST['_method'];
+				}
+
+				// build up the tests to find the function
+				$tests = array(
+					array ($this->action_name, $_method . ucwords($this->action) ),
+					array ($this->action_name, $_method . wpr_pluralize ( ucwords($this->action) ) ),
+					array (wpr_pluralize ( $this->action_name ), $_method . ucwords($this->action) ),
+					array ($this->action_name . "s", $_method . wpr_pluralize ( ucwords($this->action) ) ),
+					array ($this->action_name, $_method . wpr_unpluralize ( ucwords($this->action) ) )
+				);
+				foreach ($tests as $test) {
+					if (is_callable( $test )) {
+						$class = $test[0];
+						$method = $test[1];
+						break;
+					}
+				}
+				// break out if successful
+				if (!is_null($class) && !is_null($method)) {
+					$parameter = $this->action_request;
+				}
+				if (is_null($class) || is_null($method)) {
 					//throw new InvalidArgumentException ( 'Method was not found in class ' . $this->action_name . '.' );
 					die ( WPRESTUtils::sendResponse ( 404 ) );
 				}
 			}
-			#error_log($this->action_request);
-			if ($this->action_request != "all") {
-				if (ctype_digit ( $this->action_request )) {
-					$parameter = $this->action_request;
-				} else {
-					// Implement Later!!
-				}
-			}
-			$class = new $this->action_name ( );
+			$class = new $class ( );
 			#error_log($this->action_name . '#' . $method);
 			// Add Get and Post variables to our class call
 			return call_user_func ( array ($class, $method ), $parameter );
-			// Exit with 404
-			die ( WPRESTUtils::sendResponse ( 404 ) );
 		} catch ( InvalidArgumentException $e ) {
 			throw $e;
 		}
